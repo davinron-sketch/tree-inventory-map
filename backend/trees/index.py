@@ -166,6 +166,24 @@ def handler(event: dict, context) -> dict:
 
         if method == "POST":
             raw = json.loads(event.get("body") or "{}")
+
+            if isinstance(raw, dict) and raw.get("action") == "delete_by_date":
+                target_date = raw.get("date")
+                if not target_date:
+                    return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "date required"})}
+                cur.execute(f"DELETE FROM {SCHEMA}.trees WHERE created_at = %s", (target_date,))
+                deleted = cur.rowcount
+                cur.execute(f"""
+                    WITH ranked AS (
+                        SELECT id, ROW_NUMBER() OVER (ORDER BY number ASC) AS new_num
+                        FROM {SCHEMA}.trees
+                    )
+                    UPDATE {SCHEMA}.trees t SET number = r.new_num
+                    FROM ranked r WHERE t.id = r.id
+                """)
+                conn.commit()
+                return {"statusCode": 200, "headers": CORS, "body": _dumps({"ok": True, "deleted": deleted})}
+
             today = date.today().isoformat()
             user_id, user_name = get_user_from_event(event)
 
