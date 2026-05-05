@@ -30,7 +30,7 @@ CORS = {
 
 SCHEMA = "t_p59085732_tree_inventory_map"
 SELECT_COLS = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,address,description,photo_url,created_at,updated_at,created_by_id,created_by_name"
-SELECT_COLS_LIST = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,address,photo_url,created_at,updated_at,created_by_id,created_by_name"
+SELECT_COLS_LIST = "number,id,lat,lng,name,species,diameter,height,count,status,condition,life_status,created_at,updated_at"
 
 
 def get_conn():
@@ -91,7 +91,7 @@ def fmt(row):
         "diameter": d["diameter"],
         "height": float(d["height"]),
         "count": d["count"],
-        "age": d["age"],
+        "age": d.get("age"),
         "status": d["status"],
         "condition": d["condition"],
         "lifeStatus": d["life_status"],
@@ -102,6 +102,25 @@ def fmt(row):
         "updatedAt": d["updated_at"],
         "createdById": d.get("created_by_id"),
         "createdByName": d.get("created_by_name"),
+    }
+
+def fmt_list(row):
+    d = dict(row)
+    return {
+        "number": d["number"],
+        "id": d["id"],
+        "lat": float(d["lat"]),
+        "lng": float(d["lng"]),
+        "name": d["name"],
+        "species": d["species"],
+        "diameter": d["diameter"],
+        "height": float(d["height"]),
+        "count": d["count"],
+        "status": d["status"],
+        "condition": d["condition"],
+        "lifeStatus": d["life_status"],
+        "createdAt": d["created_at"],
+        "updatedAt": d["updated_at"],
     }
 
 
@@ -127,7 +146,7 @@ def handler(event: dict, context) -> dict:
                 return {"statusCode": 200, "headers": CORS, "body": _dumps(fmt(row))}
             cur.execute(f"SELECT {SELECT_COLS_LIST} FROM {SCHEMA}.trees ORDER BY number ASC")
             rows = cur.fetchall()
-            return {"statusCode": 200, "headers": CORS, "body": _dumps([fmt(r) for r in rows])}
+            return {"statusCode": 200, "headers": CORS, "body": _dumps([fmt_list(r) for r in rows])}
 
         if method == "POST":
             raw = json.loads(event.get("body") or "{}")
@@ -140,28 +159,31 @@ def handler(event: dict, context) -> dict:
                     return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "empty array"})}
                 cur.execute(f"SELECT COALESCE(MAX(number), 0) AS max_num FROM {SCHEMA}.trees")
                 start_num = cur.fetchone()["max_num"]
-                new_ids = []
-                for i, item in enumerate(raw):
-                    new_id = str(uuid.uuid4())
-                    new_ids.append(new_id)
-                    cur.execute(
-                        f"""INSERT INTO {SCHEMA}.trees
-                           (id,number,lat,lng,name,species,diameter,height,count,age,
-                            status,condition,life_status,address,description,photo_url,created_at,updated_at,
-                            created_by_id,created_by_name)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                        (
-                            new_id, start_num + i + 1,
-                            item["lat"], item["lng"], item["name"], item["species"],
-                            item.get("diameter", 20), item.get("height", 8),
-                            item.get("count", 1), item.get("age"),
-                            item.get("status", "good"), item.get("condition", "healthy"),
-                            item.get("lifeStatus", "alive"),
-                            item.get("address"), item.get("description"), item.get("photoUrl"),
-                            today, today,
-                            user_id, user_name,
-                        ),
+                new_ids = [str(uuid.uuid4()) for _ in raw]
+                rows_data = [
+                    (
+                        new_ids[i], start_num + i + 1,
+                        item["lat"], item["lng"], item["name"], item["species"],
+                        item.get("diameter", 20), item.get("height", 8),
+                        item.get("count", 1), item.get("age"),
+                        item.get("status", "good"), item.get("condition", "healthy"),
+                        item.get("lifeStatus", "alive"),
+                        item.get("address"), item.get("description"), item.get("photoUrl"),
+                        today, today,
+                        user_id, user_name,
                     )
+                    for i, item in enumerate(raw)
+                ]
+                psycopg2.extras.execute_values(
+                    cur,
+                    f"""INSERT INTO {SCHEMA}.trees
+                       (id,number,lat,lng,name,species,diameter,height,count,age,
+                        status,condition,life_status,address,description,photo_url,created_at,updated_at,
+                        created_by_id,created_by_name)
+                       VALUES %s""",
+                    rows_data,
+                    page_size=500,
+                )
                 conn.commit()
                 placeholders = ",".join(["%s"] * len(new_ids))
                 cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id IN ({placeholders}) ORDER BY number ASC", new_ids)
