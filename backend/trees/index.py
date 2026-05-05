@@ -1,5 +1,7 @@
 """API для управления деревьями в дендрологической ведомости (CRUD)."""
 
+import base64
+import gzip
 import hashlib
 import hmac
 import json
@@ -16,9 +18,6 @@ class _Encoder(json.JSONEncoder):
         return super().default(o)
 
 
-def _dumps(obj):
-    return json.dumps(obj, cls=_Encoder)
-
 import psycopg2
 import psycopg2.extras
 
@@ -27,6 +26,23 @@ CORS = {
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Auth-Token",
 }
+
+def _dumps(obj):
+    return json.dumps(obj, cls=_Encoder)
+
+def _gzip_response(obj, status=200):
+    body = json.dumps(obj, cls=_Encoder).encode("utf-8")
+    compressed = gzip.compress(body, compresslevel=6)
+    return {
+        "statusCode": status,
+        "headers": {
+            **CORS,
+            "Content-Encoding": "gzip",
+            "Content-Type": "application/json",
+        },
+        "body": base64.b64encode(compressed).decode("utf-8"),
+        "isBase64Encoded": True,
+    }
 
 SCHEMA = "t_p59085732_tree_inventory_map"
 SELECT_COLS = "number,id,lat,lng,name,species,diameter,height,count,age,status,condition,life_status,address,description,photo_url,created_at,updated_at,created_by_id,created_by_name"
@@ -146,7 +162,7 @@ def handler(event: dict, context) -> dict:
                 return {"statusCode": 200, "headers": CORS, "body": _dumps(fmt(row))}
             cur.execute(f"SELECT {SELECT_COLS_LIST} FROM {SCHEMA}.trees ORDER BY number ASC")
             rows = cur.fetchall()
-            return {"statusCode": 200, "headers": CORS, "body": _dumps([fmt_list(r) for r in rows])}
+            return _gzip_response([fmt_list(r) for r in rows])
 
         if method == "POST":
             raw = json.loads(event.get("body") or "{}")
