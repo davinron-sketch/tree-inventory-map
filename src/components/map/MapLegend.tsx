@@ -1,4 +1,4 @@
-import { HEDGE_COLOR } from '@/types';
+import { HEDGE_COLOR } from '@/types/tree';
 
 interface Props {
   open: boolean;
