@@ -5,7 +5,7 @@ import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { createRoot } from 'react-dom/client';
-import { TreeMarker, STATUS_COLORS, HedgeRow, STATUS_LABELS, CONDITION_LABELS } from '@/types';
+import { TreeMarker, STATUS_COLORS, HedgeRow, HEDGE_COLOR, STATUS_LABELS, CONDITION_LABELS } from '@/types';
 import TreePopup from './TreePopup';
 import MeasureTool from './MeasureTool';
 import MapLegend from './map/MapLegend';
