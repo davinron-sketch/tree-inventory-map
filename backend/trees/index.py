@@ -166,6 +166,32 @@ def handler(event: dict, context) -> dict:
 
         if method == "POST":
             raw = json.loads(event.get("body") or "{}")
+
+            # Дедупликация по lat+lng+species
+            if isinstance(raw, dict) and raw.get("action") == "deduplicate":
+                cur.execute(f"""
+                    SELECT id FROM (
+                        SELECT id,
+                               ROW_NUMBER() OVER (PARTITION BY lat, lng, species ORDER BY number ASC) as rn
+                        FROM {SCHEMA}.trees
+                    ) ranked WHERE rn > 1
+                """)
+                dup_ids = [r["id"] for r in cur.fetchall()]
+                if not dup_ids:
+                    return {"statusCode": 200, "headers": CORS, "body": _dumps({"ok": True, "deleted": 0})}
+                placeholders = ",".join(["%s"] * len(dup_ids))
+                cur.execute(f"DELETE FROM {SCHEMA}.trees WHERE id IN ({placeholders})", dup_ids)
+                cur.execute(f"""
+                    WITH ranked AS (
+                        SELECT id, ROW_NUMBER() OVER (ORDER BY number ASC) AS new_num
+                        FROM {SCHEMA}.trees
+                    )
+                    UPDATE {SCHEMA}.trees t SET number = r.new_num
+                    FROM ranked r WHERE t.id = r.id
+                """)
+                conn.commit()
+                return {"statusCode": 200, "headers": CORS, "body": _dumps({"ok": True, "deleted": len(dup_ids)})}
+
             today = date.today().isoformat()
             user_id, user_name = get_user_from_event(event)
 
