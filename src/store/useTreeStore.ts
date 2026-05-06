@@ -51,9 +51,10 @@ export function useTreeStore() {
     const existing = trees.find(t => t.id === id);
     if (!existing) return;
     const merged = { ...existing, ...updates };
+    const token = localStorage.getItem('tree_auth_token') || '';
     const res = await fetch(`${TREES_URL}?id=${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
       body: JSON.stringify(merged),
     });
     const updated: TreeMarker = await res.json();
@@ -63,6 +64,14 @@ export function useTreeStore() {
       return next;
     });
   }, [trees]);
+
+  const applyRollback = useCallback((rolled: TreeMarker) => {
+    setTrees(prev => {
+      const next = prev.map(t => t.id === rolled.id ? rolled : t);
+      writeCache(CACHE_KEY, next);
+      return next;
+    });
+  }, []);
 
   const deleteTree = useCallback(async (id: string) => {
     setSelectedTreeId(prev => (prev === id ? null : prev));
@@ -155,6 +164,7 @@ export function useTreeStore() {
     setSelectedTreeId,
     addTree,
     updateTree,
+    applyRollback,
     updateManyTrees,
     deleteTree,
     deleteTreesBefore,

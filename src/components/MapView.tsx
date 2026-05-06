@@ -20,6 +20,7 @@ interface Props {
   onEdit: (tree: TreeMarker) => void;
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
+  onRollback?: (tree: TreeMarker) => void;
   selectedTreeId: string | null;
   isGuest?: boolean;
   hedges?: HedgeRow[];
@@ -33,7 +34,7 @@ interface Props {
 
 
 
-export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId, onHedgePointsEdit, onPolygonSelect }: Props) {
+export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, onRollback, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId, onHedgePointsEdit, onPolygonSelect }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -489,7 +490,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
         const popupDiv = document.createElement('div');
         const root = createRoot(popupDiv);
         root.render(
-          <TreePopup tree={tree} onEdit={onEdit} onDelete={onDelete} onSelect={onSelect} />
+          <TreePopup tree={tree} onEdit={onEdit} onDelete={onDelete} onSelect={onSelect} onRollback={onRollback} />
         );
         marker.bindPopup(L.popup({ maxWidth: 280, minWidth: 240 }).setContent(popupDiv));
         clusterGroup.addLayer(marker);

@@ -154,6 +154,16 @@ def handler(event: dict, context) -> dict:
 
     try:
         if method == "GET":
+            if tree_id and params.get("action") == "history":
+                cur.execute(
+                    f"SELECT id, changed_at, changed_by, snapshot FROM {SCHEMA}.tree_history WHERE tree_id = %s ORDER BY changed_at DESC LIMIT 20",
+                    (tree_id,),
+                )
+                rows = cur.fetchall()
+                return {"statusCode": 200, "headers": CORS, "body": _dumps([
+                    {"id": r["id"], "changedAt": r["changed_at"].isoformat(), "changedBy": r["changed_by"], "snapshot": r["snapshot"]}
+                    for r in rows
+                ])}
             if tree_id:
                 cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
                 row = cur.fetchone()
@@ -284,8 +294,56 @@ def handler(event: dict, context) -> dict:
         if method == "PUT":
             if not tree_id:
                 return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "id required"})}
+
+            # история: сохраняем снапшот ДО изменения
+            if params.get("action") == "rollback":
+                history_id = params.get("history_id")
+                if not history_id:
+                    return {"statusCode": 400, "headers": CORS, "body": _dumps({"error": "history_id required"})}
+                cur.execute(f"SELECT snapshot FROM {SCHEMA}.tree_history WHERE id = %s AND tree_id = %s", (history_id, tree_id))
+                hist_row = cur.fetchone()
+                if not hist_row:
+                    return {"statusCode": 404, "headers": CORS, "body": _dumps({"error": "History not found"})}
+                snap = hist_row["snapshot"]
+                today = date.today().isoformat()
+                cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
+                current = cur.fetchone()
+                if current:
+                    cur.execute(
+                        f"INSERT INTO {SCHEMA}.tree_history (tree_id, changed_by, snapshot) VALUES (%s, %s, %s)",
+                        (tree_id, "rollback", _dumps(fmt(current))),
+                    )
+                cur.execute(
+                    f"""UPDATE {SCHEMA}.trees SET
+                       lat=%s,lng=%s,name=%s,species=%s,diameter=%s,height=%s,
+                       count=%s,age=%s,status=%s,condition=%s,life_status=%s,
+                       address=%s,description=%s,photo_url=%s,updated_at=%s
+                       WHERE id=%s""",
+                    (
+                        snap["lat"], snap["lng"], snap["name"], snap["species"],
+                        snap.get("diameter", 20), snap.get("height", 8),
+                        snap.get("count", 1), snap.get("age"),
+                        snap.get("status", "good"), snap.get("condition", "healthy"),
+                        snap.get("lifeStatus", "alive"),
+                        snap.get("address"), snap.get("description"), snap.get("photoUrl"),
+                        today, tree_id,
+                    ),
+                )
+                conn.commit()
+                cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
+                row = cur.fetchone()
+                return {"statusCode": 200, "headers": CORS, "body": _dumps(fmt(row))}
+
             body = json.loads(event.get("body") or "{}")
             today = date.today().isoformat()
+            user_id, user_name = get_user_from_event(event)
+            cur.execute(f"SELECT {SELECT_COLS} FROM {SCHEMA}.trees WHERE id = %s", (tree_id,))
+            current = cur.fetchone()
+            if current:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.tree_history (tree_id, changed_by, snapshot) VALUES (%s, %s, %s)",
+                    (tree_id, user_name or str(user_id) if user_id else None, _dumps(fmt(current))),
+                )
             cur.execute(
                 f"""UPDATE {SCHEMA}.trees SET
                    lat=%s,lng=%s,name=%s,species=%s,diameter=%s,height=%s,

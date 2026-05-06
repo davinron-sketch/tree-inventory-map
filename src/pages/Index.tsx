@@ -245,6 +245,7 @@ export default function Index({ user, onLogout }: IndexProps) {
                 onEdit={isEditor ? handleEdit : () => {}}
                 onDelete={isEditor ? store.deleteTree : () => {}}
                 onSelect={store.setSelectedTreeId}
+                onRollback={store.applyRollback}
                 selectedTreeId={store.selectedTreeId}
                 isGuest={!isEditor}
                 hedges={hedgeStore.hedges}

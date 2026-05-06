@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { TreeMarker, STATUS_LABELS, STATUS_COLORS, CONDITION_LABELS } from '@/types';
+import TreeHistoryDialog from '@/components/TreeHistoryDialog';
 
 interface Props {
   tree: TreeMarker;
   onEdit: (tree: TreeMarker) => void;
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
+  onRollback?: (tree: TreeMarker) => void;
 }
 
-export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
+export default function TreePopup({ tree, onEdit, onDelete, onSelect, onRollback }: Props) {
   const statusColor = STATUS_COLORS[tree.status];
   const [confirm, setConfirm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   return (
     <div className="p-3 min-w-[240px] font-sans">
@@ -118,12 +121,30 @@ export default function TreePopup({ tree, onEdit, onDelete, onSelect }: Props) {
           📋 Детали
         </button>
         <button
+          onClick={() => setShowHistory(true)}
+          className="text-xs px-2 py-1.5 rounded-md border border-[#2d6a4f]/30 text-[#2d6a4f] hover:bg-[#d8f3dc] transition-colors"
+          title="История изменений"
+        >
+          🕐
+        </button>
+        <button
           onClick={() => setConfirm(true)}
           className="text-xs px-2 py-1.5 rounded-md border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
         >
           🗑
         </button>
       </div>
+
+      {showHistory && (
+        <TreeHistoryDialog
+          tree={tree}
+          onRollback={(rolled) => {
+            onRollback?.(rolled);
+            setShowHistory(false);
+          }}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 }
