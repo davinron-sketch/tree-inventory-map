@@ -56,6 +56,14 @@ export function useHedgeStore() {
     });
   }, [hedges]);
 
+  const applyHedgeRollback = useCallback((rolled: HedgeRow) => {
+    setHedges(prev => {
+      const next = prev.map(h => h.id === rolled.id ? rolled : h);
+      writeCache(CACHE_KEY, next);
+      return next;
+    });
+  }, []);
+
   const deleteHedge = useCallback(async (id: string) => {
     setSelectedHedgeId(prev => (prev === id ? null : prev));
     setHedges(prev => {
@@ -76,6 +84,7 @@ export function useHedgeStore() {
     setSelectedHedgeId,
     addHedge,
     updateHedge,
+    applyHedgeRollback,
     deleteHedge,
   };
 }

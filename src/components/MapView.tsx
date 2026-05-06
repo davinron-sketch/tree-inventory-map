@@ -7,6 +7,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { createRoot } from 'react-dom/client';
 import { TreeMarker, STATUS_COLORS, HedgeRow, HEDGE_COLOR, STATUS_LABELS, CONDITION_LABELS } from '@/types';
 import TreePopup from './TreePopup';
+import HedgeHistoryDialog from './HedgeHistoryDialog';
 import MeasureTool from './MeasureTool';
 import MapLegend from './map/MapLegend';
 import MapLayerSwitcher from './map/MapLayerSwitcher';
@@ -21,6 +22,7 @@ interface Props {
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
   onRollback?: (tree: TreeMarker) => void;
+  onHedgeRollback?: (hedge: HedgeRow) => void;
   selectedTreeId: string | null;
   isGuest?: boolean;
   hedges?: HedgeRow[];
@@ -34,7 +36,7 @@ interface Props {
 
 
 
-export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, onRollback, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId, onHedgePointsEdit, onPolygonSelect }: Props) {
+export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect, onRollback, onHedgeRollback, selectedTreeId, isGuest = false, hedges = [], onHedgeDrawn, onHedgeEdit, onHedgeDelete, selectedHedgeId, onHedgePointsEdit, onPolygonSelect }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -68,6 +70,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
   const [geoPos, setGeoPos] = useState<{ lat: number; lng: number } | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const [layerOpen, setLayerOpen] = useState(false);
+  const [hedgeHistoryId, setHedgeHistoryId] = useState<string | null>(null);
 
 
   const geoIcon = L.divIcon({
@@ -536,6 +539,7 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
             <button onclick="window.__hedgeEdit('${hedge.id}')" style="flex:1;min-width:70px;padding:5px 8px;background:#2d6a4f;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Изменить</button>
             <button onclick="window.__hedgePtsEdit('${hedge.id}')" style="flex:1;min-width:70px;padding:5px 8px;background:#f97316;color:white;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Сдвинуть точки</button>
+            <button onclick="window.__hedgeHistory('${hedge.id}')" style="padding:5px 8px;background:#e0f2fe;color:#0369a1;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;" title="История изменений">🕐</button>
             <button onclick="window.__hedgeDel('${hedge.id}')" style="padding:5px 8px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">Удалить</button>
           </div>` : ''}
         </div>`;
@@ -556,11 +560,25 @@ export default function MapView({ trees, onMapClick, onEdit, onDelete, onSelect,
     (window as unknown as Record<string, unknown>).__hedgeEdit = (id: string) => { const h = hedges.find(x => x.id === id); if (h && onHedgeEdit) onHedgeEdit(h); };
     (window as unknown as Record<string, unknown>).__hedgeDel = (id: string) => { if (onHedgeDelete) onHedgeDelete(id); };
     (window as unknown as Record<string, unknown>).__hedgePtsEdit = (id: string) => { startHedgePointsEdit(id); };
+    (window as unknown as Record<string, unknown>).__hedgeHistory = (id: string) => { setHedgeHistoryId(id); };
   }, [hedges, onHedgeEdit, onHedgeDelete, startHedgePointsEdit]);
+
+  const hedgeForHistory = hedgeHistoryId ? hedges.find(h => h.id === hedgeHistoryId) ?? null : null;
 
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full rounded-xl overflow-hidden" />
+
+      {hedgeForHistory && (
+        <HedgeHistoryDialog
+          hedge={hedgeForHistory}
+          onRollback={(rolled) => {
+            onHedgeRollback?.(rolled);
+            setHedgeHistoryId(null);
+          }}
+          onClose={() => setHedgeHistoryId(null)}
+        />
+      )}
 
       {/* Left controls */}
       <div className="absolute top-4 left-4 z-[1000] flex flex-col gap-2" style={{ maxWidth: 210 }}>

@@ -101,6 +101,16 @@ def handler(event: dict, context) -> dict:
 
     try:
         if method == "GET":
+            if row_id and params.get("action") == "history":
+                cur.execute(
+                    f"SELECT id, changed_at, changed_by, snapshot FROM {SCHEMA}.hedge_history WHERE hedge_id = %s ORDER BY changed_at DESC LIMIT 20",
+                    (row_id,),
+                )
+                rows = cur.fetchall()
+                return {"statusCode": 200, "headers": CORS, "body": json.dumps([
+                    {"id": r["id"], "changedAt": r["changed_at"].isoformat(), "changedBy": r["changed_by"], "snapshot": r["snapshot"]}
+                    for r in rows
+                ])}
             if row_id:
                 cur.execute(f"SELECT * FROM {SCHEMA}.hedgerows WHERE id = %s", (row_id,))
                 row = cur.fetchone()
@@ -145,8 +155,52 @@ def handler(event: dict, context) -> dict:
         if method == "PUT":
             if not row_id:
                 return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "id required"})}
+
+            if params.get("action") == "rollback":
+                history_id = params.get("history_id")
+                if not history_id:
+                    return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "history_id required"})}
+                cur.execute(f"SELECT snapshot FROM {SCHEMA}.hedge_history WHERE id = %s AND hedge_id = %s", (history_id, row_id))
+                hist_row = cur.fetchone()
+                if not hist_row:
+                    return {"statusCode": 404, "headers": CORS, "body": json.dumps({"error": "History not found"})}
+                snap = hist_row["snapshot"]
+                today = date.today().isoformat()
+                cur.execute(f"SELECT * FROM {SCHEMA}.hedgerows WHERE id = %s", (row_id,))
+                current = cur.fetchone()
+                if current:
+                    cur.execute(
+                        f"INSERT INTO {SCHEMA}.hedge_history (hedge_id, changed_by, snapshot) VALUES (%s, %s, %s)",
+                        (row_id, "rollback", json.dumps(fmt(current))),
+                    )
+                points_json = json.dumps(snap.get("points", []))
+                cur.execute(
+                    f"""UPDATE {SCHEMA}.hedgerows SET
+                       name=%s, points=%s, length_m=%s, species=%s, status=%s, condition=%s,
+                       address=%s, description=%s, updated_at=%s
+                       WHERE id=%s""",
+                    (
+                        snap.get("name", "Живая изгородь"), points_json, snap.get("lengthM"),
+                        snap.get("species", "Живая изгородь"), snap.get("status", "good"),
+                        snap.get("condition", "healthy"), snap.get("address"), snap.get("description"),
+                        today, row_id,
+                    ),
+                )
+                conn.commit()
+                cur.execute(f"SELECT * FROM {SCHEMA}.hedgerows WHERE id = %s", (row_id,))
+                row = cur.fetchone()
+                return {"statusCode": 200, "headers": CORS, "body": json.dumps(fmt(row))}
+
             body = json.loads(event.get("body") or "{}")
             today = date.today().isoformat()
+            user_id, user_name = get_user_from_event(event)
+            cur.execute(f"SELECT * FROM {SCHEMA}.hedgerows WHERE id = %s", (row_id,))
+            current = cur.fetchone()
+            if current:
+                cur.execute(
+                    f"INSERT INTO {SCHEMA}.hedge_history (hedge_id, changed_by, snapshot) VALUES (%s, %s, %s)",
+                    (row_id, user_name or str(user_id) if user_id else None, json.dumps(fmt(current))),
+                )
             points_json = json.dumps(body.get("points", []))
             cur.execute(
                 f"""UPDATE {SCHEMA}.hedgerows SET
