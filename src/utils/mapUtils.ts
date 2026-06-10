@@ -3,6 +3,7 @@ import { TreeMarker, STATUS_COLORS } from '@/types';
 
 export function getTreeEmoji(species: string, lifeStatus?: string): string {
   if (lifeStatus === 'cut') return '🪵';
+  if (lifeStatus === 'trimmed') return '❗';
   const s = species.toLowerCase();
   if (s.includes('кустарник') || s === 'кустарник') return '🌿';
   if (
@@ -32,6 +33,29 @@ export function createTreeIcon(
           <svg width="11" height="11" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
             <line x1="2" y1="2" x2="12" y2="12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
             <line x1="12" y1="2" x2="2" y2="12" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -14],
+    });
+  }
+  if (lifeStatus === 'trimmed') {
+    return L.divIcon({
+      className: '',
+      html: `
+        <div style="
+          width:22px;height:22px;
+          background:#d97706;
+          border:2px solid white;
+          border-radius:50%;
+          box-shadow:0 2px 8px rgba(0,0,0,0.35);
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <svg width="10" height="13" viewBox="0 0 10 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3.5" y="1" width="3" height="7" rx="1.5" fill="white"/>
+            <circle cx="5" cy="12.5" r="1.5" fill="white"/>
           </svg>
         </div>
       `,
