@@ -284,6 +284,8 @@ export default function Index({ user, onLogout }: IndexProps) {
                 setFilterSpecies={store.setFilterSpecies}
                 filterStatus={store.filterStatus}
                 setFilterStatus={store.setFilterStatus}
+                filterLifeStatus={store.filterLifeStatus}
+                setFilterLifeStatus={store.setFilterLifeStatus}
                 isGuest={!isEditor}
               />
             </div>

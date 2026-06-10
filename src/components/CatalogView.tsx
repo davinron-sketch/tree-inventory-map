@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
-import { TreeMarker, STATUS_LABELS, STATUS_COLORS, SPECIES_GROUPS, TreeStatus } from '@/types';
+import { TreeMarker, STATUS_LABELS, STATUS_COLORS, SPECIES_GROUPS, TreeStatus, TreeLifeStatus, LIFE_STATUS_LABELS } from '@/types';
 import { SelectGroup, SelectLabel, SelectSeparator } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import BulkEditDialog from '@/components/BulkEditDialog';
@@ -22,6 +22,8 @@ interface Props {
   setFilterSpecies: (v: string) => void;
   filterStatus: TreeStatus | '';
   setFilterStatus: (v: TreeStatus | '') => void;
+  filterLifeStatus?: TreeLifeStatus | '';
+  setFilterLifeStatus?: (v: TreeLifeStatus | '') => void;
   isGuest?: boolean;
 }
 
@@ -38,6 +40,8 @@ export default function CatalogView({
   setFilterSpecies,
   filterStatus,
   setFilterStatus,
+  filterLifeStatus = '',
+  setFilterLifeStatus,
   isGuest = false,
 }: Props) {
   const [sortBy, setSortBy] = useState<'number' | 'name' | 'diameter' | 'height' | 'age' | 'date'>('number');
@@ -54,8 +58,9 @@ export default function CatalogView({
   const filtered = useMemo(() => trees.filter(tree => {
     if (dateFrom && tree.createdAt < dateFrom) return false;
     if (dateTo && tree.createdAt > dateTo) return false;
+    if (filterLifeStatus && tree.lifeStatus !== filterLifeStatus) return false;
     return true;
-  }), [trees, dateFrom, dateTo]);
+  }), [trees, dateFrom, dateTo, filterLifeStatus]);
 
   const bulkDeleteCount = useMemo(() => trees.filter(t => {
     if (bulkDeleteFrom && t.createdAt < bulkDeleteFrom) return false;
@@ -87,7 +92,7 @@ export default function CatalogView({
             className="pl-9 border-[var(--forest-light)]/40"
           />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Select value={filterSpecies || '__all__'} onValueChange={v => setFilterSpecies(v === '__all__' ? '' : v)}>
             <SelectTrigger className="border-[var(--forest-light)]/40 text-sm h-9">
               <SelectValue placeholder="Порода" />
@@ -115,6 +120,18 @@ export default function CatalogView({
             <SelectContent>
               <SelectItem value="__all__">Все состояния</SelectItem>
               {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          <Select value={filterLifeStatus || '__all__'} onValueChange={v => setFilterLifeStatus?.(v === '__all__' ? '' : v as TreeLifeStatus)}>
+            <SelectTrigger className="border-[var(--forest-light)]/40 text-sm h-9">
+              <SelectValue placeholder="Жизн. состояние" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Все жизн. состояния</SelectItem>
+              {(Object.entries(LIFE_STATUS_LABELS) as [TreeLifeStatus, string][]).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{k === 'alive' ? '🌿' : k === 'trimmed' ? '❗' : '🪵'} {v}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -235,12 +252,13 @@ export default function CatalogView({
                   className="w-16 h-16 object-cover rounded-lg shrink-0"
                 />
               ) : (
-                <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 text-2xl ${tree.lifeStatus === 'cut' ? 'bg-red-50' : 'bg-[var(--forest-pale)]'}`}>
+                <div className={`w-16 h-16 rounded-lg flex items-center justify-center shrink-0 text-2xl ${tree.lifeStatus === 'cut' ? 'bg-red-50' : tree.lifeStatus === 'trimmed' ? 'bg-yellow-50' : 'bg-[var(--forest-pale)]'}`}>
                   {tree.lifeStatus === 'cut' ? (
                     <div className="w-9 h-9 rounded-full bg-red-500 flex items-center justify-center">
                       <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><line x1="3" y1="3" x2="15" y2="15" stroke="white" strokeWidth="3" strokeLinecap="round"/><line x1="15" y1="3" x2="3" y2="15" stroke="white" strokeWidth="3" strokeLinecap="round"/></svg>
                     </div>
-                  ) : tree.species.toLowerCase().includes('кустарник') ? '🌿'
+                  ) : tree.lifeStatus === 'trimmed' ? '❗'
+                  : tree.species.toLowerCase().includes('кустарник') ? '🌿'
                     : (tree.species.toLowerCase().includes('хвойное') || tree.species.toLowerCase().includes('ель') || tree.species.toLowerCase().includes('сосна') || tree.species.toLowerCase().includes('лиственниц') || tree.species.toLowerCase().includes('пихта') || tree.species.toLowerCase().includes('кедр')) ? '🌲'
                     : '🌳'}
                 </div>
@@ -262,8 +280,8 @@ export default function CatalogView({
                     >
                       {STATUS_LABELS[tree.status]}
                     </Badge>
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${tree.lifeStatus === 'cut' ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-700'}`}>
-                      {tree.lifeStatus === 'cut' ? '✕ Спиленное' : '🌿 Живое'}
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${tree.lifeStatus === 'cut' ? 'bg-gray-100 text-gray-500' : tree.lifeStatus === 'trimmed' ? 'bg-yellow-50 text-yellow-700' : 'bg-green-50 text-green-700'}`}>
+                      {tree.lifeStatus === 'cut' ? '✕ Спиленное' : tree.lifeStatus === 'trimmed' ? '❗ Обрезка' : '🌿 Живое'}
                     </span>
                   </div>
                 </div>

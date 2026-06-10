@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { TreeMarker, TreeStatus } from '@/types';
+import { TreeMarker, TreeStatus, TreeLifeStatus } from '@/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { readCache, writeCache } from '@/hooks/useSessionCache';
 import { API, STORAGE_KEYS } from '@/config/api';
@@ -14,6 +14,7 @@ export function useTreeStore() {
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const [filterSpecies, setFilterSpecies] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<TreeStatus | ''>('');
+  const [filterLifeStatus, setFilterLifeStatus] = useState<TreeLifeStatus | ''>('');
   const [filterDiameterMin, setFilterDiameterMin] = useState<number>(0);
   const [filterDiameterMax, setFilterDiameterMax] = useState<number>(200);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -146,11 +147,12 @@ export function useTreeStore() {
     return trees.filter(tree => {
       if (filterSpecies && tree.species !== filterSpecies) return false;
       if (filterStatus && tree.status !== filterStatus) return false;
+      if (filterLifeStatus && tree.lifeStatus !== filterLifeStatus) return false;
       if (tree.diameter < filterDiameterMin || tree.diameter > filterDiameterMax) return false;
       if (q && !tree.name.toLowerCase().includes(q) && !tree.species.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [trees, filterSpecies, filterStatus, filterDiameterMin, filterDiameterMax, debouncedSearch]);
+  }, [trees, filterSpecies, filterStatus, filterLifeStatus, filterDiameterMin, filterDiameterMax, debouncedSearch]);
 
   const selectedTree = trees.find(t => t.id === selectedTreeId) ?? null;
 
@@ -173,6 +175,8 @@ export function useTreeStore() {
     setFilterSpecies,
     filterStatus,
     setFilterStatus,
+    filterLifeStatus,
+    setFilterLifeStatus,
     filterDiameterMin,
     setFilterDiameterMin,
     filterDiameterMax,
