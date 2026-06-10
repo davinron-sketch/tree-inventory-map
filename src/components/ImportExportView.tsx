@@ -123,6 +123,8 @@ export default function ImportExportView({ trees, onImport, importProgress, isGu
         Высота: ${t.height} м<br/>
         Количество: ${t.count} шт<br/>
         Состояние: ${STATUS_LABELS[t.status] ?? t.status}<br/>
+        Жизненное состояние: ${LIFE_STATUS_LABELS[t.lifeStatus] ?? t.lifeStatus}<br/>
+        ${t.address ? `Адрес: ${t.address}<br/>` : ''}
         ${t.description ? `Примечание: ${t.description}` : ''}
       ]]></description>
       <Point><coordinates>${t.lng},${t.lat},0</coordinates></Point>
