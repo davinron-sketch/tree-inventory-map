@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TreeMarker, HedgeRow, STATUS_LABELS, STATUS_COLORS } from '@/types';
+import { TreeMarker, HedgeRow, STATUS_LABELS, STATUS_COLORS, LIFE_STATUS_LABELS } from '@/types';
 import Icon from '@/components/ui/icon';
 
 interface Props {
@@ -43,7 +43,17 @@ export default function StatsView({ trees, hedges = [] }: Props) {
     const emergency = statusMap['emergency'] ?? 0;
     const bad = statusMap['bad'] ?? 0;
 
-    return { total, totalArea: n, avgDiameter, avgHeight, byStatus, bySpecies, emergency, bad };
+    const alive = trees.filter(t => t.lifeStatus === 'alive').reduce((s, t) => s + t.count, 0);
+    const cut = trees.filter(t => t.lifeStatus === 'cut').reduce((s, t) => s + t.count, 0);
+    const trimmed = trees.filter(t => t.lifeStatus === 'trimmed').reduce((s, t) => s + t.count, 0);
+
+    const byLifeStatus = [
+      { key: 'alive', label: LIFE_STATUS_LABELS['alive'], value: alive, icon: '🌿', color: '#2d6a4f', bg: 'bg-green-50', text: 'text-green-700' },
+      { key: 'cut', label: LIFE_STATUS_LABELS['cut'], value: cut, icon: '🪵', color: '#8b5e3c', bg: 'bg-gray-100', text: 'text-gray-600' },
+      { key: 'trimmed', label: LIFE_STATUS_LABELS['trimmed'], value: trimmed, icon: '❗', color: '#b45309', bg: 'bg-yellow-50', text: 'text-yellow-700' },
+    ].filter(d => d.value > 0);
+
+    return { total, totalArea: n, avgDiameter, avgHeight, byStatus, bySpecies, emergency, bad, byLifeStatus, trimmed };
   }, [trees]);
 
   const hedgeStats = useMemo(() => {
@@ -91,6 +101,32 @@ export default function StatsView({ trees, hedges = [] }: Props) {
           )}
           {stats.bad > 0 && (
             <div className="text-xs text-red-500">⚡ Неудовл.: <b>{stats.bad} шт</b> — требуется обработка</div>
+          )}
+        </div>
+      )}
+
+      {/* Life status block */}
+      {stats.byLifeStatus.length > 0 && (
+        <div className="bg-white rounded-xl border border-[var(--border)] p-4">
+          <div className="font-semibold text-[var(--forest-dark)] font-heading text-sm mb-3">По жизненному состоянию</div>
+          <div className="space-y-2">
+            {stats.byLifeStatus.map(s => (
+              <div key={s.key} className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center text-lg shrink-0`}>{s.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-semibold ${s.text} leading-tight`}>{s.label}</div>
+                </div>
+                <div className={`text-xl font-bold font-heading ${s.text} shrink-0`}>{s.value} шт</div>
+              </div>
+            ))}
+          </div>
+          {stats.trimmed > 0 && (
+            <div className="mt-3 pt-3 border-t border-yellow-100 flex items-start gap-2 bg-yellow-50 rounded-lg p-2">
+              <span className="text-sm">❗</span>
+              <p className="text-xs text-yellow-700">
+                <b>{stats.trimmed} шт</b> прошли обрезку или частичное спиливание — рекомендуется повторный осмотр.
+              </p>
+            </div>
           )}
         </div>
       )}
