@@ -324,21 +324,23 @@ export default function TreeFormDialog({ open, onClose, onSave, initialData, lat
           {/* Life status */}
           <div className="grid gap-1.5">
             <Label>Жизненное состояние</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               {(Object.entries(LIFE_STATUS_LABELS) as [TreeLifeStatus, string][]).map(([k, v]) => (
                 <button
                   key={k}
                   type="button"
                   onClick={() => setLifeStatus(k)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-all
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all text-left
                     ${lifeStatus === k
                       ? k === 'alive'
                         ? 'bg-green-50 border-green-400 text-green-700'
-                        : 'bg-gray-100 border-gray-400 text-gray-700'
+                        : k === 'trimmed'
+                          ? 'bg-yellow-50 border-yellow-400 text-yellow-700'
+                          : 'bg-gray-100 border-gray-400 text-gray-700'
                       : 'border-[var(--forest-light)]/40 text-[var(--stone)] hover:bg-[var(--forest-pale)]'
                     }`}
                 >
-                  <span>{k === 'alive' ? '🌿' : '🪵'}</span>
+                  <span>{k === 'alive' ? '🌿' : k === 'trimmed' ? '❗' : '🪵'}</span>
                   {v}
                 </button>
               ))}

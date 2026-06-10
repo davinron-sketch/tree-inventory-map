@@ -18,6 +18,7 @@ interface Props {
 const LIFE_STATUS_LABELS: Record<string, string> = {
   alive: '🌿 Живое',
   cut: '🪵 Спиленное',
+  trimmed: '❗ Подвергшееся обрезке',
 };
 
 function formatDate(iso: string) {

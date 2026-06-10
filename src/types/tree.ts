@@ -1,6 +1,6 @@
 export type TreeStatus = 'good' | 'satisfactory' | 'bad' | 'dry' | 'emergency';
 export type TreeCondition = 'healthy' | 'weakened' | 'strongly_weakened' | 'dying' | 'dead';
-export type TreeLifeStatus = 'alive' | 'cut';
+export type TreeLifeStatus = 'alive' | 'cut' | 'trimmed';
 
 export interface TreeMarker {
   number?: number;
@@ -130,6 +130,7 @@ export const SPECIES_LIST = SPECIES_GROUPS.flatMap(g => g.items);
 export const LIFE_STATUS_LABELS: Record<TreeLifeStatus, string> = {
   alive: 'Живое',
   cut: 'Спиленное',
+  trimmed: 'Подвергшееся обрезке (Спиливанию)',
 };
 
 export const CONDITION_LABELS: Record<TreeCondition, string> = {

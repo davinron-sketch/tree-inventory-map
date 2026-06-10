@@ -60,8 +60,8 @@ export default function TreePopup({ tree, onEdit, onDelete, onSelect, onRollback
         <div className="text-[#6b7c6e]">Категория</div>
         <div className="font-medium text-[#1a3a2a]">{CONDITION_LABELS[tree.condition]}</div>
         <div className="text-[#6b7c6e]">Состояние</div>
-        <div className={`font-medium text-sm ${tree.lifeStatus === 'cut' ? 'text-gray-500' : 'text-green-700'}`}>
-          {tree.lifeStatus === 'cut' ? '🪵 Спиленное' : '🌿 Живое'}
+        <div className={`font-medium text-sm ${tree.lifeStatus === 'cut' ? 'text-gray-500' : tree.lifeStatus === 'trimmed' ? 'text-yellow-700' : 'text-green-700'}`}>
+          {tree.lifeStatus === 'cut' ? '🪵 Спиленное' : tree.lifeStatus === 'trimmed' ? '❗ Подвергшееся обрезке' : '🌿 Живое'}
         </div>
         <div className="text-[#6b7c6e]">Координаты</div>
         <div className="font-mono text-[10px] text-[#1a3a2a]">{tree.lat.toFixed(5)}, {tree.lng.toFixed(5)}</div>
